@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-geist-sans: "Geist", sans-serif;
+  --font-geist-mono: "Geist Mono", monospace;
+  --font-montserrat: "Montserrat", sans-serif;
+  --font-poppins: "Poppins", sans-serif; /* Tambahkan Poppins */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-montserrat), var(--font-poppins), sans-serif; /* Gunakan Montserrat dengan fallback Poppins */
+}
+
+.bg-login {
+  background-image: url("/image/makanan.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+.product-card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+}

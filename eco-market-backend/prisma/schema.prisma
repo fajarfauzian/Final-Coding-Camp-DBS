@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Category {
+  FOOD
+  DRINK
+  ITEMS
+}
+
+enum payment {
+  CASH
+  QRIS
+}
+
+enum Status {
+  NEW
+  PAID
+  DONE
+}
+
+model user {
+  id              Int      @id @default(autoincrement())
+  uuid            String   @default("")
+  name            String   @default("")
+  email           String   @unique @default("")
+  password        String   @default("")
+  profile_picture String   @default("")
+  role            Role     @default(ADMIN)
+  createdAt       DateTime @default(now())
+  updateAt        DateTime @updatedAt
+  order           order[]
+}
+
+model product {
+  id          Int          @id @default(autoincrement())
+  uuid        String       @default("")
+  name        String       @default("")
+  price       Int          @default(0)
+  category    Category     @default(FOOD)
+  picture     String       @default("")
+  description String       @db.Text
+  createdAt   DateTime     @default(now())
+  updateAt    DateTime     @default(now()) @updatedAt // Beri nilai default saat kolom ditambahkan
+  order_list  order_list[]
+  order       order[]
+}
+
+model order {
+  id             Int          @id @default(autoincrement())
+  uuid           String       @default("")
+  customer       String       @default("")
+  total_price    Int          @default(0)
+  payment_method payment      @default(CASH)
+  idUser         Int?
+  user           user?        @relation(fields: [idUser], references: [id])
+  idProduct      Int?
+  product        product?     @relation(fields: [idProduct], references: [id])
+  status         Status       @default(NEW)
+  createdAt      DateTime     @default(now())
+  order_list     order_list[]
+}
+
+model order_list {
+  id        Int      @id @default(autoincrement())
+  uuid      String   @default("")
+  idOrder   Int?
+  order     order?   @relation(fields: [idOrder], references: [id])
+  idProduct Int?
+  product   product? @relation(fields: [idProduct], references: [id])
+  quantity  Int      @default(0)
+  note      String   @db.Text
+}
