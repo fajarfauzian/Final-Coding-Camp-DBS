@@ -41,6 +41,21 @@ const TransaksiPage = () => {
               duration: 2000,
               easing: "easeInOutBounce",
             },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Sales",
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Month",
+                },
+              },
+            },
           },
         });
       }
@@ -54,40 +69,66 @@ const TransaksiPage = () => {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-transparent backdrop-blur-lg border bg-opacity-60 bg-white border-primary rounded-[30px]">
-      <main className="flex-1 p-4">
-        <div className="my-4 justify-center space-x-4 ">
-          <h2 className="pb-2 text-red-telkom-hover">
-            <b>MONTHLY SALES</b>
-          </h2>
-          <p className="pb-2 text-red-telkom-hover">Here is the monthly sales data.</p>
-          <p className="pb-2 text-red-telkom-hover">Total sales: $0</p>
-          <p className="pb-2 text-red-telkom-hover">Average sales per month: $0</p>
-          <p className="pb-2 text-red-telkom-hover">Sales trend: Growth</p>
+    <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
+      <div className="rounded-lg bg-white p-6">
+        {/* Header */}
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          Transaction Dashboard
+        </h2>
+
+        {/* Monthly Sales Section */}
+        <div className="mb-8 bg-gray-50 p-6 rounded-lg shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">
+            Monthly Sales Overview
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Here is the monthly sales data.
+          </p>
+          <div className="space-y-2">
+            <p className="text-gray-700">
+              <span className="font-medium">Total Sales:</span> $0
+            </p>
+            <p className="text-gray-700">
+              <span className="font-medium">Average Sales per Month:</span> $0
+            </p>
+            <p className="text-gray-700">
+              <span className="font-medium">Sales Trend:</span> Growth
+            </p>
+          </div>
           <Link
             href="/admin/user"
-            className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 shadow-lg"
+            className="mt-4 inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors duration-200 shadow-md"
           >
-            Click here to see user
+            View Users
           </Link>
         </div>
-        <div className="my-4">
-          <canvas id="myChart"></canvas>
+
+        {/* Chart Section */}
+        <div className="mb-8 bg-gray-50 p-6 rounded-lg shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">
+            Sales Chart
+          </h3>
+          <div className="w-full">
+            <canvas id="myChart" className="max-h-96"></canvas>
+          </div>
         </div>
-        <div className="my-4 center">
-          <h2 className="pb-2">
-            <b>Shop</b>
-          </h2>
-          <p className="pb-2 text-red-telkom-hover">Go to our store to buy our stock.</p>
+
+        {/* Shop Section */}
+        <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Shop</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Visit our store to explore and purchase our products.
+          </p>
           <Link
             href="/admin/product"
-            className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 shadow-lg"
+            className="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors duration-200 shadow-md"
           >
-            Click here to go Product
+            Go to Products
           </Link>
         </div>
-      </main>
+      </div>
     </div>
   );
 };
+
 export default TransaksiPage;

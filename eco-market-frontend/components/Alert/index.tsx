@@ -13,7 +13,6 @@ export const AlertInfo = ({ children, title }: Prop) => {
       role="alert"
     >
       <div className="flex gap-3">
-        {" "}
         {/* jarak logo dan text  */}
         <div>
           <svg
@@ -47,7 +46,6 @@ export const AlertSuccess = ({ children, title }: Prop) => {
       role="alert"
     >
       <div className="flex gap-3">
-        {" "}
         {/* jarak logo dan text  */}
         <div>
           <svg
@@ -79,7 +77,6 @@ export const AlertWarning = ({ children, title }: Prop) => {
       role="alert"
     >
       <div className="flex gap-3">
-        {" "}
         {/* jarak logo dan text  */}
         <div>
           <svg
@@ -113,7 +110,6 @@ export const AlertDanger = ({ children, title }: Prop) => {
       role="alert"
     >
       <div className="flex gap-3">
-        {" "}
         {/* jarak logo dan text  */}
         <div>
           <svg

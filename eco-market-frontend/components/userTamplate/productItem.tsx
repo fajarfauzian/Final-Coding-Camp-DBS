@@ -1,46 +1,29 @@
-// import React from "react";
-// import Link from "next/link";
-
-// interface ProductItemProps {
-//   icon: React.ReactNode;
-//   label: string;
-//   path: string;
-//   active?: boolean;
-// }
-
-// const ProductItem = ({ icon, label, path, active }: ProductItemProps) => {
-//   return (
-//     <Link
-//       href={path}
-//       className={`glow-on-hover hover:transform hover:scale-105 flex items-center p-2 my-2 ${
-//         active ? "text-primary" : "text-gray"
-//       }`}
-//     >
-//       <span className="mr-3">{icon}</span>
-//       <span className="flex-1">{label}</span>
-//     </Link>
-//   );
-// };
-
-// export default ProductItem;
-import React from "react";
+"use client";
 import Link from "next/link";
+import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
-interface ProductItemProps {
-  icon: React.ReactNode;
+type ProductItemProps = {
+  icon: ReactNode;
   label: string;
   path: string;
-  active?: boolean;
-}
+  active?: boolean; // Optional, karena kita akan menggunakan usePathname
+};
 
-const ProductItem = ({ icon, label, path, active }: ProductItemProps) => {
+const ProductItem = ({ icon, label, path }: ProductItemProps) => {
+  const pathname = usePathname(); // Mendapatkan URL saat ini
+  const isActive = pathname === path; // Membandingkan URL saat ini dengan path item
+
   return (
-    <Link
-      href={path}
-      className={`flex items-center p-2 my-2 $ {active ?  'text-primary' : 'text-gray' hover:text-red-400 transition-colors duration-300} `}
-    >
-      <span className="mr-3">{icon}</span>
-      <span className="flex1">{label}</span>
+    <Link href={path}>
+      <div
+        className={`flex items-center gap-3 p-3 rounded-lg text-sm transition-colors ${
+          isActive ? "bg-blue-100 text-blue-600" : "text-gray-600 hover:bg-gray-100"
+        }`}
+      >
+        <div className="w-5 h-5">{icon}</div>
+        <span className="flex-1">{label}</span>
+      </div>
     </Link>
   );
 };

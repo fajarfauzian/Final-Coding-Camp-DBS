@@ -1,28 +1,46 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect, ReactNode } from "react";
 import { BASE_API_URL } from "@/global";
 import { storeCookie } from "@/lib/client-cookie";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
-import { toast } from "react-toastify";
-
-// Dynamically import ToastContainer to avoid SSR issues
-const ToastContainer = dynamic(() => import("react-toastify").then((mod) => mod.ToastContainer), {
-  ssr: false, // Disable server-side rendering for this component
-});
-
-// Import Toastify CSS
+import { toast, ToastContainerProps } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// Type for the ClientOnly component props
+interface ClientOnlyProps {
+  children: ReactNode;
+}
+
+// ToastContainer will be rendered only on client side
+function ClientOnly({ children }: ClientOnlyProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
+  return <>{children}</>;
+}
+
 const LoginPage = () => {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  // Properly typed ToastContainer state
+  const [ToastContainer, setToastContainer] = useState<React.ComponentType<ToastContainerProps> | null>(null);
+  
+  // Load ToastContainer only on client side
+  useEffect(() => {
+    import("react-toastify").then((mod) => {
+      setToastContainer(() => mod.ToastContainer);
+    });
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,7 +48,7 @@ const LoginPage = () => {
 
     try {
       const url = `${BASE_API_URL}/user/login`;
-      const payload = { email, password }; // No need to stringify manually
+      const payload = { email, password };
 
       const { data } = await axios.post(url, payload, {
         headers: { "Content-Type": "application/json" },
@@ -78,8 +96,10 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-green-100 flex items-center justify-center p-4">
-      {/* ToastContainer for notifications */}
-      <ToastContainer containerId="toastLogin" />
+      {/* ToastContainer for notifications - client-side only */}
+      <ClientOnly>
+        {ToastContainer && <ToastContainer containerId="toastLogin" />}
+      </ClientOnly>
 
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
         {/* Left Side: Illustration */}
@@ -105,7 +125,9 @@ const LoginPage = () => {
               src="/image/icon.png"
               className="h-auto mx-auto mb-4"
             />
-            <h2 className="text-3xl font-bold text-gray-800">Login to Your Account</h2>
+            <h2 className="text-3xl font-bold text-gray-800">
+              Login to Your Account
+            </h2>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -220,7 +242,7 @@ const LoginPage = () => {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              By signing in, you agree to Eco Market&apos;s{" "}
+              By signing in, you agree to Eco Market's{" "}
               <a href="#" className="text-green-600 hover:text-green-700">
                 Terms of Service
               </a>{" "}

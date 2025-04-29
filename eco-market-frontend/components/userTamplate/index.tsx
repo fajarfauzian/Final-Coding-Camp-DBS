@@ -11,7 +11,7 @@ type ProductType = {
   path: string;
   label: string;
 };
-type CashierProp = {
+type ManagerProp = {
   children: ReactNode;
   id: string;
   title: string;
@@ -31,21 +31,21 @@ const getUser = async (): Promise<IUser | null> => {
   }
 };
 
-const userTemplate = async ({
+const adminTemplate = async ({
   children,
   id,
   title,
   productList,
-}: CashierProp) => {
+}: ManagerProp) => {
   const profile: IUser | null = await getUser();
 
   return (
     <div className="w-full min-h-dvh bg-slate-50">
-      <Sidebar productList={productList} title={title} id={id} user={profile}>
+      <Sidebar productList={productList} title={title} user={profile}>
         {children}
       </Sidebar>
     </div>
   );
 };
 
-export default userTemplate;
+export default adminTemplate;

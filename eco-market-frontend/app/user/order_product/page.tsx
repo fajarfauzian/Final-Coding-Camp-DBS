@@ -163,7 +163,7 @@ const ProductPage: React.FC = () => {
       : product.filter((item) => item.category === selectedCategory);
 
   return (
-    <div className="max-w-[1400px] mx-auto p-4">
+    <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
         <div className="relative w-full sm:w-auto sm:flex-1 max-w-md mb-4 sm:mb-0">

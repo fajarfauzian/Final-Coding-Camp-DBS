@@ -287,41 +287,39 @@ const ProductPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="bg-white rounded-lg p-6 border-t-4 border-red-telkom-hover shadow-md">
-        <h4 className="text-2xl font-bold mb-3 text-red-telkom-hover">Product Data</h4>
-        <p className="text-sm text-gray-600 mb-5">
-          This page displays product data, allowing managers to view details,
-          search, and manage product accounts by adding, editing, or deleting them.
-        </p>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          {/* Search Bar */}
-          <div className="w-full sm:w-auto flex-grow max-w-md">
-            <Search url={`/user/product`} search={search} />
-          </div>
-          {/* Category Filter */}
-          <div className="flex flex-wrap gap-2">
-            {["ALL", "FOOD", "DRINK", "ITEMS"].map((category) => (
-              <button
-                key={category}
-                onClick={() => handleCategoryChange(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
-                  selectedCategory === category
-                    ? "bg-red-telkom-hover text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {category === "ALL" ? "All" : category.charAt(0) + category.slice(1).toLowerCase()}
-              </button>
-            ))}
-          </div>
+    <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
+      <h4 className="text-2xl font-bold text-gray-800 mb-2y">Product Data</h4>
+      <p className="text-sm text-gray-600 mb-5">
+        This page displays product data, allowing managers to view details,
+        search, and manage product accounts by adding, editing, or deleting them.
+      </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        {/* Search Bar */}
+        <div className="w-full sm:w-auto flex-grow max-w-md">
+          <Search url={`/user/product`} search={search} />
         </div>
-        {product.length === 0 ? (
-          <AlertInfo title="Information">No data available</AlertInfo>
-        ) : (
-          <ProductList search={search} selectedCategory={selectedCategory} />
-        )}
+        {/* Category Filter */}
+        <div className="flex flex-wrap gap-2">
+          {["ALL", "FOOD", "DRINK", "ITEMS"].map((category) => (
+            <button
+              key={category}
+              onClick={() => handleCategoryChange(category)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
+                selectedCategory === category
+                  ? "bg-red-telkom-hover text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {category === "ALL" ? "All" : category.charAt(0) + category.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
       </div>
+      {product.length === 0 ? (
+        <AlertInfo title="Information">No data available</AlertInfo>
+      ) : (
+        <ProductList search={search} selectedCategory={selectedCategory} />
+      )}
     </div>
   );
 };

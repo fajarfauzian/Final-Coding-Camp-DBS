@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import Sidebar from "./sidebar";
+import Sidebar from "./Sidebar";
 import { IUser } from "@/app/types";
 import { getCookies } from "@/lib/server-cookie";
 import { BASE_API_URL, BASE_IMAGE_PROFILE } from "@/global";
