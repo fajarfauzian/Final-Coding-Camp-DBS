@@ -39,32 +39,54 @@ Bertanggung jawab dalam pengembangan frontend dan backend menggunakan teknologi 
 ```bash
 git clone https://github.com/fajarfauzian/Final-Coding-Camp-DBS.git
 cd Final-Coding-Camp-DBS
+```
+
+### 2. Setup Backend
+
+```bash
 cd eco-market-backend
 npm install
+```
 
 Konfigurasi .env
 Buat file .env dan sesuaikan:
 
+```bash
 DATABASE_URL="mysql://username:password@localhost:3306/db_market(bebas)"
 PORT=2000
+```
 
 Lalu jalankan Prisma:
+
+```bash
 npx prisma generate
 npx prisma migrate dev
+```
 
 Jalankan server backend:
+
+```bash
 npm run dev
+```
 
-Setup Frontend:
+### 3. Setup Frontend
 
+```bash
 cd eco-market-frontend
 npm install
+```
 
 Konfigurasi .env.local
+
+```bash
 NEXT_PUBLIC_API_BASE_URL=http://localhost:2000
+```
 
 Jalankan frontend:
+
+```bash
 npm run dev
+```
 
 Akses dashboard di: http://localhost:3000
 
