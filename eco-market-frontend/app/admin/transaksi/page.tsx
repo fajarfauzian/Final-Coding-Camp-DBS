@@ -92,7 +92,7 @@ const TransaksiPage = () => {
     salesData[salesData.length - 1] > salesData[0] ? "Growth" : "Decline";
 
   return (
-    <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
+    <div className="bg-gray-50 p-4 md:p-6 lg:p-4">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">Monthly Sales</h2>
       <p className="text-sm text-gray-600 mb-6">
         View and analyze the monthly sales data for your business.

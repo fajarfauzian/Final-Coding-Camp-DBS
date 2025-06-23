@@ -38,7 +38,7 @@ const adminTemplate = async ({
   productList,
 }: ManagerProp) => {
   const profile: IUser | null = await getUser();
-
+  
   return (
     <div className="w-full min-h-dvh bg-slate-50">
       <Sidebar productList={productList} title={title} user={profile}>

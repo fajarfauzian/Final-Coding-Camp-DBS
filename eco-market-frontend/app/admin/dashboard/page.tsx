@@ -5,6 +5,8 @@ import {
   FaClipboardList,
   FaMoneyBillWave,
   FaChartLine,
+  FaSearch,
+  FaBell,
 } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,145 +14,186 @@ import Profile from "../../../public/image/eco-market-logo-1.png";
 import { BASE_API_URL } from "@/global";
 import { getCookies } from "@/lib/client-cookie";
 import { get } from "@/lib/api-bridge";
+import { motion } from "framer-motion";
 
-const getUserCount = async () => {
-  try {
-    const TOKEN = getCookies("token") ?? "";
-    const url = `${BASE_API_URL}/user`;
-    const { data } = await get(url, TOKEN);
-    if (data?.status) {
-      return data.data.length;
-    }
-    return 0;
-  } catch (error) {
-    console.error("Error fetching user data:", error);
-    return 0;
-  }
-};
-
-const getProductCount = async () => {
-  try {
-    const TOKEN = getCookies("token") ?? "";
-    const url = `${BASE_API_URL}/product`;
-    const { data } = await get(url, TOKEN);
-    if (data?.status) {
-      return data.data.length;
-    }
-    return 0;
-  } catch (error) {
-    console.error("Error fetching product data:", error);
-    return 0;
-  }
-};
-
-const Dashboard = () => {
-  const [userCount, setUserCount] = useState(0);
-  const [productCount, setProductCount] = useState(0);
+// Custom hook for data fetching
+const useDataFetch = (url: string) => {
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserCount = async () => {
-      const count = await getUserCount();
-      setUserCount(count);
+    const fetchData = async () => {
+      try {
+        const TOKEN = getCookies("token") ?? "";
+        const { data } = await get(url, TOKEN);
+        if (data?.status) {
+          setCount(data.data.length);
+        }
+      } catch (error) {
+        console.error(`Error fetching data from ${url}:`, error);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchData();
+  }, [url]);
 
-    const fetchProductCount = async () => {
-      const count = await getProductCount();
-      setProductCount(count);
-    };
+  return { count, loading };
+};
 
-    fetchUserCount();
-    fetchProductCount();
-  }, []);
+const StatCard = ({ icon: Icon, title, value, change, color, loading }: any) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    className={`bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300`}
+  >
+    <div className="flex p-6 items-center">
+      <div className="mr-4">
+        <div className={`p-4 ${color.bg} ${color.text} rounded-2xl transition-all duration-300`}>
+          <Icon size={28} />
+        </div>
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <div className="flex items-baseline mt-2">
+          {loading ? (
+            <div className="h-8 w-20 bg-gray-200 animate-pulse rounded"></div>
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-gray-900">{value}</p>
+              {change && (
+                <span className={`ml-2 text-xs font-medium ${change.color} ${change.bg} px-2 py-1 rounded-full`}>
+                  {change.text}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+    <div className={`h-1.5 w-full ${color.gradient}`}></div>
+  </motion.div>
+);
+
+const QuickAccessButton = ({ href, icon: Icon, text, gradient }: any) => (
+  <motion.div whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}>
+    <Link
+      href={href}
+      className={`flex items-center p-5 ${gradient} text-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300`}
+    >
+      <Icon className="mr-3" size={24} />
+      <span className="font-semibold text-lg">{text}</span>
+    </Link>
+  </motion.div>
+);
+
+const Dashboard = () => {
+  const { count: userCount, loading: userLoading } = useDataFetch(`${BASE_API_URL}/user`);
+  const { count: productCount, loading: productLoading } = useDataFetch(`${BASE_API_URL}/product`);
 
   return (
-    <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
-        <Image
-          src={Profile}
-          width={50}
-          height={50}
-          alt="Profile"
-          className="rounded-full"
+    <div className="container mx-auto px-4 py-6 max-w-7xl">
+      {/* Welcome Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <h1 className="text-2xl font-bold text-gray-800">Welcome back, Admin! 👋</h1>
+        <p className="text-gray-600 mt-2">Here's what's happening with your store today.</p>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          icon={FaUsers}
+          title="Total Users"
+          value={userCount}
+          loading={userLoading}
+          change={{ text: "+12%", color: "text-green-500", bg: "bg-green-100" }}
+          color={{
+            bg: "bg-blue-100",
+            text: "text-blue-600",
+            gradient: "bg-gradient-to-r from-blue-500 to-blue-600"
+          }}
+        />
+        
+        <StatCard
+          icon={FaClipboardList}
+          title="Total Products"
+          value={productCount}
+          loading={productLoading}
+          change={{ text: "+5%", color: "text-green-500", bg: "bg-green-100" }}
+          color={{
+            bg: "bg-green-100",
+            text: "text-green-600",
+            gradient: "bg-gradient-to-r from-green-500 to-green-600"
+          }}
+        />
+
+        <StatCard
+          icon={FaMoneyBillWave}
+          title="Total Income"
+          value="$0"
+          loading={false}
+          change={{ text: "+0%", color: "text-yellow-500", bg: "bg-yellow-100" }}
+          color={{
+            bg: "bg-yellow-100",
+            text: "text-yellow-600",
+            gradient: "bg-gradient-to-r from-yellow-500 to-yellow-600"
+          }}
+        />
+
+        <StatCard
+          icon={FaChartLine}
+          title="Growth Rate"
+          value="0%"
+          loading={false}
+          change={{ text: "Stable", color: "text-gray-500", bg: "bg-gray-100" }}
+          color={{
+            bg: "bg-red-100",
+            text: "text-red-600",
+            gradient: "bg-gradient-to-r from-red-500 to-red-600"
+          }}
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <div className="flex items-center p-4 bg-white rounded-lg shadow-xs">
-          <div className="p-3 mr-4 bg-blue-500 text-white rounded-full">
-            <FaUsers size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Users</p>
-            <p className="text-lg font-semibold text-gray-700">{userCount}</p>
-          </div>
-        </div>
-        <div className="flex items-center p-4 bg-white rounded-lg shadow-xs">
-          <div className="p-3 mr-4 bg-green-500 text-white rounded-full">
-            <FaClipboardList size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Product</p>
-            <p className="text-lg font-semibold text-gray-700">
-              {productCount}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center p-4 bg-white rounded-lg shadow-xs">
-          <div className="p-3 mr-4 bg-yellow-500 text-white rounded-full">
-            <FaMoneyBillWave size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Income</p>
-            <p className="text-lg font-semibold text-gray-700">$0</p>
-          </div>
-        </div>
-        <div className="flex items-center p-4 bg-white rounded-lg shadow-xs">
-          <div className="p-3 mr-4 bg-red-500 text-white rounded-full">
-            <FaChartLine size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Growth</p>
-            <p className="text-lg font-semibold text-gray-700">0%</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <h3 className="text-lg font-medium text-gray-900">Quick Links</h3>
-        <div className="flex space-x-4 mt-4">
-          <Link
+      {/* Quick Links */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-2xl p-8 shadow-lg"
+      >
+        <h3 className="text-2xl font-bold text-gray-800 mb-6">Quick Access</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <QuickAccessButton
             href="/admin/user"
-            className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600"
-          >
-            <FaUsers className="mr-2" />
-            Manage Users
-          </Link>
-          <Link
+            icon={FaUsers}
+            text="Manage Users"
+            gradient="bg-gradient-to-r from-blue-500 to-blue-600"
+          />
+          
+          <QuickAccessButton
             href="/admin/product"
-            className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600"
-          >
-            <FaClipboardList className="mr-2" />
-            View Product
-          </Link>
-          <Link
+            icon={FaClipboardList}
+            text="View Products"
+            gradient="bg-gradient-to-r from-green-500 to-green-600"
+          />
+          
+          <QuickAccessButton
             href="/admin/transaksi"
-            className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-md hover:bg-yellow-600"
-          >
-            <FaMoneyBillWave className="mr-2" />
-            Transaction
-          </Link>
-          <Link
+            icon={FaMoneyBillWave}
+            text="Transactions"
+            gradient="bg-gradient-to-r from-yellow-500 to-yellow-600"
+          />
+          
+          <QuickAccessButton
             href="/admin/growth"
-            className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600"
-          >
-            <FaChartLine className="mr-2" />
-            Track Growth
-          </Link>
+            icon={FaChartLine}
+            text="Track Growth"
+            gradient="bg-gradient-to-r from-red-500 to-red-600"
+          />
         </div>
-      </div>
-      {/* </div> */}
-      {/* </div> */}
+      </motion.div>
     </div>
   );
 };

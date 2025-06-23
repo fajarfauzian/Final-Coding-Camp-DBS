@@ -30,84 +30,72 @@ const UserPage = async ({
   const users: IUser[] = await getUsers(search);
 
   const renderRoleBadge = (role: string) => {
-    const baseStyles = "text-xs font-medium px-3 py-1 rounded-full";
+    const baseStyles = "text-xs font-medium px-2.5 py-0.5 rounded-full";
     const roleStyles =
       role === "ADMIN"
-        ? "bg-blue-100 text-blue-800 dark:bg-blue-600 dark:text-white"
-        : "bg-indigo-100 text-indigo-800 dark:bg-indigo-600 dark:text-white";
+        ? "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20"
+        : "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20";
 
     return <span className={`${baseStyles} ${roleStyles}`}>{role}</span>;
   };
 
   return (
-      <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
-        <h4 className="text-2xl font-bold text-gray-800 mb-2">User Data</h4>
-        <p className="text-sm text-gray-600 mb-6">
-          This page displays user data, allowing admins to view details, search, and manage users by adding, editing, or deleting them.
+    <div className="bg-gray-50 p-4 md:p-6 lg:p-4">
+      <div className="border-b pb-4 mb-4">
+        <h4 className="text-xl font-semibold text-gray-900">User Management</h4>
+        <p className="text-sm text-gray-500 mt-1">
+          Manage and monitor user accounts across the platform
         </p>
-
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-          {/* Search Bar */}
-          <div className="w-full sm:w-auto flex-grow max-w-md">
-            <Search url="/admin/user" search={search} />
-          </div>
-          {/* Add User Button */}
-          <AddUser />
-        </div>
-
-        {users.length === 0 ? (
-          <AlertInfo title="Information">No users available</AlertInfo>
-        ) : (
-          <div className="grid gap-4">
-            {users.map((user, index) => (
-              <div
-                key={`user-${index}`}
-                className="flex flex-col sm:flex-row items-center bg-gray-50 rounded-lg shadow-sm p-4 gap-4"
-              >
-                {/* Profile Picture */}
-                <div className="w-full sm:w-1/12 text-center">
-                  <span className="text-sm font-semibold text-gray-700">Picture</span>
-                  <Image
-                    width={50}
-                    height={50}
-                    src={`${BASE_IMAGE_PROFILE}/${user.profile_picture}`}
-                    className="rounded-full mx-auto mt-2"
-                    alt={`${user.name}'s profile picture`}
-                    unoptimized
-                  />
-                </div>
-
-                {/* Name */}
-                <div className="w-full sm:w-2/12">
-                  <span className="text-sm font-semibold text-gray-700">Name</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{user.name}</p>
-                </div>
-
-                {/* Email */}
-                <div className="w-full sm:w-5/12">
-                  <span className="text-sm font-semibold text-gray-700">Email</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{user.email}</p>
-                </div>
-
-                {/* Role */}
-                <div className="w-full sm:w-2/12">
-                  <span className="text-sm font-semibold text-gray-700">Role</span>
-                  <div className="mt-1">{renderRoleBadge(user.role)}</div>
-                </div>
-
-                {/* Actions */}
-                <div className="w-full sm:w-2/12 text-center">
-                  <span className="text-sm font-semibold text-gray-700">Actions</span>
-                  <div className="flex justify-center gap-2 mt-2">
-                    <EditUser selectedUser={user} />
-                    <DeleteUser selectedUser={user} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-5 gap-3">
+        <div className="w-full sm:w-auto flex-grow max-w-md">
+          <Search url="/admin/user" search={search} />
+        </div>
+        <AddUser />
+      </div>
+
+      {users.length === 0 ? (
+        <AlertInfo title="Information">No users available</AlertInfo>
+      ) : (
+        <div className="space-y-3">
+          {users.map((user, index) => (
+            <div
+              key={`user-${index}`}
+              className="flex flex-col sm:flex-row items-center bg-white border rounded-lg p-3 gap-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="w-full sm:w-1/12 text-center">
+                <Image
+                  width={40}
+                  height={40}
+                  src={`${BASE_IMAGE_PROFILE}/${user.profile_picture}`}
+                  className="rounded-full mx-auto object-cover"
+                  alt={`${user.name}'s profile`}
+                  unoptimized
+                />
+              </div>
+
+              <div className="w-full sm:w-2/12">
+                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+              </div>
+
+              <div className="w-full sm:w-5/12">
+                <p className="text-sm text-gray-600">{user.email}</p>
+              </div>
+
+              <div className="w-full sm:w-2/12">
+                {renderRoleBadge(user.role)}
+              </div>
+
+              <div className="w-full sm:w-2/12 flex justify-center gap-2">
+                <EditUser selectedUser={user} />
+                <DeleteUser selectedUser={user} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 

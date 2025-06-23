@@ -1,210 +1,310 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import React from "react";
 import Image from "next/image";
+import { useSearchParams, useRouter } from "next/navigation";
+import { FaBowlRice } from "react-icons/fa6";
+import Swal from "sweetalert2";
 
 import { IProduct, ICart } from "../../types";
 import { getCookies, storeCookie, removeCookies } from "@/lib/client-cookie";
 import { BASE_API_URL, BASE_IMAGE_PRODUCT } from "@/global";
-import { get } from "@/lib/api-bridge";
-import { AlertInfo } from "@/components/Alert/index";
+import { get, post } from "@/lib/api-bridge";
 import Button from "./button";
 import CardComponent from "./card";
 import Search from "./search";
-import { FaBowlRice } from "react-icons/fa6";
-import { useSearchParams } from "next/navigation";
+import { AlertInfo } from "@/components/Alert/index";
+
+const categories = [
+  { id: "ALL", label: "All", icon: "🛍️" },
+  { id: "FOOD", label: "Food", icon: "🍱" },
+  { id: "DRINK", label: "Drinks", icon: "🥤" },
+  { id: "ITEMS", label: "Items", icon: "📦" },
+];
+
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(price);
 
 const getProduct = async (search: string, token: string): Promise<IProduct[]> => {
   try {
-    const url = `${BASE_API_URL}/product?search=${search}`;
-    const { data } = await get(url, token);
-    return data?.status ? data.data : [];
+    if (!token) return [];
+    const response = await get(`${BASE_API_URL}/product?search=${encodeURIComponent(search)}`, token);
+    if (!response?.status) return [];
+    return Array.isArray(response.data) ? response.data : 
+           response.data?.products || response.data?.data || [];
   } catch (error) {
-    console.log(error);
+    console.error("Error fetching products:", error);
     return [];
   }
 };
 
-const categories = [
-  { id: "ALL", label: "All", icon: "🕒" },
-  { id: "FOOD", label: "Food", icon: "🍔" },
-  { id: "DRINK", label: "Drinks", icon: "🥤" },
-  { id: "ITEMS", label: "Items", icon: "🍿" },
-];
-
-const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(price);
-};
-
 const ProductPage: React.FC = () => {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
-
-  const [product, setProduct] = useState<IProduct[]>([]);
+  
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [cart, setCart] = useState<ICart[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [total, setTotal] = useState(0);
+  const [category, setCategory] = useState("ALL");
+  const [isMobile, setIsMobile] = useState(false);
+  const [customer, setCustomer] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [token, setToken] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const saveCartToCookies = useCallback((updatedCart: ICart[]) => {
-    storeCookie("cart", JSON.stringify(updatedCart));
+  const checkAuth = useCallback(() => {
+    const storedToken = getCookies("token");
+    if (storedToken) {
+      setToken(storedToken);
+      setIsAuthenticated(true);
+      return storedToken;
+    }
+    setIsAuthenticated(false);
+    return "";
   }, []);
 
-  useEffect(() => {
-    const token = getCookies("token") || "";
-    const fetchProduct = async () => {
-      const data = await getProduct(search, token);
-      setProduct(data);
-    };
-    fetchProduct();
+  const handleLoginRedirect = useCallback(() => {
+    Swal.fire({
+      icon: "info",
+      title: "Please Log In",
+      text: "You need to be logged in to checkout",
+      confirmButtonText: "Log In",
+      confirmButtonColor: "#10B981",
+    }).then((result) => {
+      if (result.isConfirmed) router.push("/login");
+    });
+  }, [router]);
 
-    // store cart to cookies
-    const savedCart = getCookies("cart");
-    if (savedCart) {
-      const parsedCart = JSON.parse(savedCart);
-      setCart(parsedCart);
-      const calculatedTotal = parsedCart.reduce(
-        (sum: number, item: ICart) => sum + item.price * item.quantity,
-        0
-      );
-      setTotal(calculatedTotal);
+  const updateCart = useCallback((newCart: ICart[]) => {
+    setCart(newCart);
+    setTotal(newCart.reduce((sum, item) => sum + item.price * item.quantity, 0));
+    storeCookie("cart", JSON.stringify(newCart));
+  }, []);
+
+  const handleAddToCart = useCallback((product: IProduct) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.productId === product.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.productId === product.id 
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prev, {
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        note: "-",  // Initialize with default note
+        picture: product.picture,
+        product,
+      }];
+    });
+  }, []);
+
+  const handleRemoveFromCart = useCallback((product: IProduct) => {
+    setCart((prev) => {
+      const updated = prev.map((item) =>
+        item.productId === product.id
+          ? { ...item, quantity: item.quantity - 1 }
+          : item
+      ).filter((item) => item.quantity > 0);
+      updateCart(updated);
+      return updated;
+    });
+  }, [updateCart]);
+
+  const handleNoteChange = useCallback((productId: number, note: string) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.productId === productId ? { ...item, note: note || "-" } : item
+      )
+    );
+  }, []);
+
+  const handleCheckout = useCallback(async () => {
+    if (!isAuthenticated) {
+      handleLoginRedirect();
+      return;
     }
 
-    // Check if the screen is mobile
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    if (cart.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Empty Cart",
+        text: "Please add items to your cart first",
+        confirmButtonColor: "#10B981",
+      });
+      return;
+    }
+
+    if (!customer.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Customer Name Required",
+        text: "Please enter the customer name",
+        confirmButtonColor: "#10B981",
+      });
+      return;
+    }
+
+    try {
+      const orderData = {
+        customer: customer.trim(),
+        payment_method: paymentMethod,
+        status: "NEW",
+        orderlists: cart.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          note: item.note || "-",  // Ensure note is never empty
+        })),
+      };
+
+      const response = await post(`${BASE_API_URL}/order/create`, orderData, token);
+      
+      if (response?.status) {
+        await Swal.fire({
+          icon: "success",
+          title: "Order Successful!",
+          text: `Total: ${formatPrice(total)}`,
+          confirmButtonColor: "#10B981",
+        });
+        setCart([]);
+        setTotal(0);
+        setCustomer("");
+        setPaymentMethod("CASH");
+        removeCookies("cart");
+      } else {
+        throw new Error(response?.message || "Failed to create order");
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Checkout Failed",
+        text: error instanceof Error ? error.message : "Please try again or contact support",
+        confirmButtonColor: "#10B981",
+      });
+    }
+  }, [cart, total, customer, paymentMethod, token, isAuthenticated, handleLoginRedirect]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const currentToken = checkAuth();
+        const productData = await getProduct(search, currentToken);
+        setProducts(productData);
+
+        const savedCart = getCookies("cart");
+        if (savedCart) {
+          try {
+            const parsedCart = JSON.parse(savedCart);
+            if (Array.isArray(parsedCart)) {
+              // Ensure all cart items have a note
+              const validatedCart = parsedCart.map(item => ({
+                ...item,
+                note: item.note || "-"
+              }));
+              setCart(validatedCart);
+              setTotal(validatedCart.reduce((sum, item) => sum + item.price * item.quantity, 0));
+            }
+          } catch (error) {
+            console.error("Error parsing cart:", error);
+          }
+        }
+
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+      } catch (error) {
+        setError("Failed to load products");
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    checkIsMobile();
-    window.addEventListener("resize", checkIsMobile);
+    loadData();
+  }, [search, checkAuth]);
 
-    return () => window.removeEventListener("resize", checkIsMobile);
-  }, [search]);
-
-  const updateCartAndCookies = useCallback(
-    (newCart: ICart[]) => {
-      setCart(newCart);
-      const newTotal = newCart.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      );
-      setTotal(newTotal);
-      saveCartToCookies(newCart);
-    },
-    [saveCartToCookies]
-  );
-
-  const handleAddToCart = useCallback(
-    (productItem: IProduct) => {
-      const updatedCart = [...cart];
-      const existingItem = updatedCart.find(
-        (item) => item.productId === productItem.id
-      );
-
-      if (existingItem) {
-        existingItem.quantity += 1;
-      } else {
-        updatedCart.push({
-          productId: productItem.id,
-          name: productItem.name,
-          price: productItem.price,
-          quantity: 1,
-          note: "",
-          picture: productItem.picture,
-        });
-      }
-
-      updateCartAndCookies(updatedCart);
-    },
-    [cart, updateCartAndCookies]
-  );
-
-  const handleRemoveFromCart = useCallback(
-    (productItem: IProduct) => {
-      const updatedCart = [...cart];
-      const existingItem = updatedCart.find(
-        (item) => item.productId === productItem.id
-      );
-
-      if (existingItem) {
-        if (existingItem.quantity > 1) {
-          existingItem.quantity -= 1;
-        } else {
-          const index = updatedCart.indexOf(existingItem);
-          updatedCart.splice(index, 1);
-        }
-      }
-
-      updateCartAndCookies(updatedCart);
-    },
-    [cart, updateCartAndCookies]
-  );
-
-  const handleCheckout = useCallback(() => {
-    alert(`Total: ${formatPrice(total)} - Proceeding to checkout...`);
-    // Clear cart after checkout
-    setCart([]);
-    setTotal(0);
-    removeCookies("cart");
-  }, [total]);
-
-  const handleCategoryChange = useCallback((category: string) => {
-    setSelectedCategory(category);
-  }, []);
-
-  const filteredProduct =
-    selectedCategory === "ALL"
-      ? product
-      : product.filter((item) => item.category === selectedCategory);
+  const filteredProducts = category === "ALL" 
+    ? products 
+    : products.filter((p) => p.category === category);
 
   return (
-    <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
-        <div className="relative w-full sm:w-auto sm:flex-1 max-w-md mb-4 sm:mb-0">
-          <Search url={`/user/order_product`} search={search} />
+    <div className="bg-gray-50 p-4 md:p-6 lg:p-4">
+      {!isAuthenticated && (
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <p className="text-emerald-700 text-sm flex items-center gap-2">
+            <span>👋</span>
+            Welcome! Please
+            <button 
+              onClick={handleLoginRedirect}
+              className="text-emerald-600 hover:text-emerald-800 underline"
+            >
+              log in
+            </button>
+            to checkout.
+          </p>
+        </div>
+      )}
+
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          Our Menu
+        </h1>
+        <div className="w-full sm:w-80">
+          <Search url="/user/order_product" search={search} />
         </div>
       </div>
 
-      {/* Categories */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4 text-red-telkom-hover">Categories</h2>
         <div className="flex flex-wrap gap-3">
-          {categories.map((category) => (
+          {categories.map((cat) => (
             <Button
-              key={category.id}
+              key={cat.id}
               variant="category"
-              onClick={() => handleCategoryChange(category.id)}
-              className={`mb-2 ${
-                selectedCategory === category.id ? "bg-white shadow-md" : ""
+              onClick={() => setCategory(cat.id)}
+              className={`flex items-center gap-2 rounded-full px-6 py-2 text-sm font-medium transition-all duration-300 ${
+                category === cat.id
+                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-100 transform -translate-y-0.5"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              <span className="mr-2">{category.icon}</span>
-              {category.label}
+              <span>{cat.icon}</span>
+              {cat.label}
             </Button>
           ))}
         </div>
       </div>
 
-      {/* Product Grid and Cart */}
-      <div className={`flex ${isMobile ? "flex-col" : "flex-row"} gap-6`}>
-        <div className={`${isMobile ? "w-full" : "flex-1"}`}>
-          {product.length === 0 ? (
-            <AlertInfo title="Information">No product items available</AlertInfo>
+      <div className={`flex ${isMobile ? "flex-col" : "flex-row"} gap-8`}>
+        <div className="flex-1">
+          {isLoading ? (
+            <AlertInfo title="Loading">Fetching menu items...</AlertInfo>
+          ) : error ? (
+            <AlertInfo title="Error">{error}</AlertInfo>
+          ) : filteredProducts.length === 0 ? (
+            <AlertInfo title="No Items Found">Try another category or search term</AlertInfo>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProduct.map((item, index) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProducts.map((item) => (
                 <CardComponent
-                  key={`product-${index}`}
+                  key={item.id}
                   data={item}
-                  itemInCart={
-                    cart.find((cartItem) => cartItem.productId === item.id) || null
-                  }
+                  itemInCart={cart.find((i) => i.productId === item.id) || null}
                   handleAddToCart={handleAddToCart}
                   handleRemoveFromCart={handleRemoveFromCart}
                 />
@@ -213,300 +313,105 @@ const ProductPage: React.FC = () => {
           )}
         </div>
 
-        {/* Order Details */}
-     <div className={`${isMobile ? "w-full" : "w-[380px] shrink-0"}`}>
-  <div className="bg-white rounded-2xl p-6 shadow-sm border sticky top-[100px]">
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-xl font-bold text-red-telkom-hover">Order Details:</h2>
-    </div>
-
-    <div className="space-y-4 mb-6">
-      {cart.map((item) => (
-        <div key={item.productId} className="flex items-center gap-3">
-          {/* PICTURE */}
-          <div className="relative aspect-square mb-3">
-            {item.picture ? (
-              <div className="w-16 h-16 bg-[#FFF5EE] rounded-xl overflow-hidden relative">
-                <Image
-                  fill
-                  src={`${BASE_IMAGE_PRODUCT}/${item.picture}`}
-                  alt={item.name}
-                  className="object-cover"
-                />
+        <div className={`${isMobile ? "w-full" : "w-96"} sticky top-24 self-start rounded-xl bg-white p-6 shadow-xl shadow-gray-100/50 border border-gray-100`}>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
+          {cart.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Your cart is empty</p>
+              <p className="text-sm text-gray-400 mt-2">Add items to get started</p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Customer Name
+                  </label>
+                  <input
+                    type="text"
+                    value={customer}
+                    onChange={(e) => setCustomer(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 p-2.5 text-sm focus:border-emerald-500 focus:ring-emerald-500 text-black"
+                    placeholder="Enter name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 p-2.5 text-sm focus:border-emerald-500 focus:ring-emerald-500 text-black"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="QRIS">QRIS</option>
+                  </select>
+                </div>
               </div>
-            ) : (
-              <div className="items-center grid justify-items-center w-full h-full rounded-xl">
-                <FaBowlRice size={40} />
-              </div>
-            )}
-          </div>
 
-          <div className="flex-1">
-            <h3 className=" font-bold text-red-telkom">{item.name}</h3>
-            <p className="text-red-telkom">{item.quantity}</p>
-          </div>
-          <p className="font-bold text-red-telkom">
-            {formatPrice(item.price * item.quantity)}
-          </p>
+              <div className="space-y-4 mb-6">
+                {cart.map((item) => (
+                  <div key={item.productId} className="flex gap-4 p-3 rounded-lg bg-gray-50">
+                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-white">
+                      {item.picture ? (
+                        <Image
+                          src={`${BASE_IMAGE_PRODUCT}/${item.picture}`}
+                          alt={item.name}
+                          width={64}
+                          height={64}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                          <FaBowlRice className="text-gray-400" size={24} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-black truncate">
+                        {item.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-black">
+                        Qty: {item.quantity} × {formatPrice(item.price)}
+                      </p>
+                      <input
+                        type="text"
+                        value={item.note}
+                        onChange={(e) => handleNoteChange(item.productId, e.target.value)}
+                        className="mt-2 w-full rounded-md border-gray-200 text-xs p-1.5 focus:border-emerald-500 focus:ring-emerald-500 text-black"
+                        placeholder="Add note (required)"
+                      />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-black">
+                        {formatPrice(item.price * item.quantity)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-between items-center mb-6">
+                  <span className="text-base font-medium text-black">Total</span>
+                  <span className="text-lg font-semibold text-emerald-600">
+                    {formatPrice(total)}
+                  </span>
+                </div>
+                <Button
+                  className="w-full rounded-lg bg-emerald-500 py-3 text-white font-medium hover:bg-emerald-600 transition-colors"
+                  onClick={handleCheckout}
+                >
+                  {isAuthenticated ? "Complete Order" : "Log in to Checkout"}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
-      ))}
-    </div>
-
-    <div className="border-t pt-4">
-      <div className="flex justify-between font-bold text-lg text-red-telkom">
-        <span>Total</span>
-        <span>{formatPrice(total)}</span>
-      </div>
-      <Button
-        className="w-full mt-4 bg-orange-500 hover:bg-orange-600"
-        onClick={handleCheckout}
-      >
-        Checkout
-      </Button>
-    </div>
-  </div>
-</div>
-
       </div>
     </div>
   );
 };
 
 export default ProductPage;
-
-//old code before refactoring to new code above this line
-// "use client";
-// import { useState, useEffect } from "react";
-// import { IMenu, ICart } from "@/app/types";
-// import { getCookie, storeCookie } from "@/lib/client-cookie";
-// import { BASE_API_URL } from "@/global";
-// import { get, post } from "@/lib/api-bridge"; // Assuming you have a post method for API requests
-// import { AlertInfo } from "@/components/alert/index";
-// import Search from "./search";
-// import CardComponent from "./card";
-// import { useSearchParams } from "next/navigation";
-
-// const getMenu = async (search: string, token: string): Promise<IMenu[]> => {
-//   try {
-//     const url = `${BASE_API_URL}/menu?search=${search}`;
-//     const { data } = await get(url, token);
-//     return data?.status ? data.data : [];
-//   } catch (error) {
-//     console.log(error);
-//     return [];
-//   }
-// };
-
-// const saveCartToServer = async (cart: ICart[], token: string) => {
-//   try {
-//     const url = `${BASE_API_URL}/cart`;
-//     const formData = new FormData();
-//     formData.append("cart", JSON.stringify(cart)); // Serialize cart array to JSON string
-//     await post(url, formData, token);
-//   } catch (error) {
-//     console.log(error);
-//   }
-// };
-
-// const MenuPage = () => {
-//   const searchParams = useSearchParams(); // Menggunakan hook untuk mengambil search params
-//   const search = searchParams.get("search") || ""; // Mengambil nilai parameter search
-
-//   const [menu, setMenu] = useState<IMenu[]>([]);
-//   const [cart, setCart] = useState<ICart[]>([]);
-//   const [total, setTotal] = useState<number>(0);
-//   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-
-//   useEffect(() => {
-//     const token = getCookie("token") || "";
-//     const fetchMenu = async () => {
-//       const data = await getMenu(search, token);
-//       setMenu(data);
-//     };
-//     fetchMenu();
-//   }, [search]);
-
-//   useEffect(() => {
-//     const savedCart = getCookie("cart");
-//     if (savedCart) {
-//       const parsedCart = JSON.parse(savedCart);
-//       setCart(parsedCart);
-//       const totalAmount = parsedCart.reduce((acc: number, item: ICart) => acc + item.price * item.quantity, 0);
-//       setTotal(totalAmount);
-//     }
-//   }, []);
-
-//   const renderCategory = (cat: string): React.ReactNode => {
-//     switch (cat) {
-//       case "FOOD":
-//         return (
-//           <span className="bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-//             Food
-//           </span>
-//         );
-//       case "SNACK":
-//         return (
-//           <span className="bg-yellow-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-//             Snack
-//           </span>
-//         );
-//       default:
-//         return (
-//           <span className="bg-purple-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-//             Drink
-//           </span>
-//         );
-//     }
-//   };
-
-//   const handleAddToCart = (menuItem: IMenu) => {
-//     const updatedCart = [...cart];
-//     const existingItem = updatedCart.find((item) => item.menuId === menuItem.id);
-
-//     if (existingItem) {
-//       existingItem.quantity += 1;
-//     } else {
-//       updatedCart.push({
-//         menuId: menuItem.id,
-//         name: menuItem.name,
-//         price: menuItem.price,
-//         quantity: 1,
-//         note: "",
-//       });
-//     }
-
-//     setCart(updatedCart);
-//     setTotal((prevTotal) => prevTotal + menuItem.price);
-//     storeCookie("cart", JSON.stringify(updatedCart));
-//     const token = getCookie("token") || "";
-//     saveCartToServer(updatedCart, token);
-//   };
-
-//   const handleRemoveFromCart = (menuItem: IMenu) => {
-//     const updatedCart = [...cart];
-//     const existingItem = updatedCart.find((item) => item.menuId === menuItem.id);
-
-//     if (existingItem) {
-//       if (existingItem.quantity > 1) {
-//         existingItem.quantity -= 1;
-//         setTotal((prevTotal) => prevTotal - menuItem.price);
-//       } else {
-//         const index = updatedCart.indexOf(existingItem);
-//         updatedCart.splice(index, 1);
-//         setTotal((prevTotal) => prevTotal - menuItem.price);
-//       }
-//       setCart(updatedCart);
-//       storeCookie("cart", JSON.stringify(updatedCart));
-//       console.log(updatedCart)
-//       const token = getCookie("token") || "";
-//       saveCartToServer(updatedCart, token);
-//     }
-//   };
-
-//   const handleCheckout = () => {
-//     alert(`Total: Rp${total} - Proceeding to checkout...`);
-//   };
-
-//   const handleCategoryChange = (category: string) => {
-//     setSelectedCategory(category);
-//   };
-
-//   const filteredMenu = selectedCategory === "ALL" ? menu : menu.filter(item => item.category === selectedCategory);
-
-//   return (
-//     <div className="m-4 bg-yellow-50 rounded-lg p-6 border-t-4 border-t-yellow-700 shadow-lg">
-//       <h4 className="text-2xl font-bold text-yellow-700 mb-4">Menu Data</h4>
-//       <p className="text-sm text-yellow-600 mb-6">
-//         This page displays menu data, allowing users to view details, search,
-//         and manage menu items by adding, editing, or deleting them.
-//       </p>
-
-//       <div className="flex justify-between items-center mb-6">
-//         <div className="flex items-center w-full max-w-md">
-//           <Search url={`/cashier/pesan_makanan`} search={search} />
-//         </div>
-//         <div className="flex items-center">
-//           <button
-//             onClick={() => handleCategoryChange("ALL")}
-//             className={`category-button ${selectedCategory === "ALL" ? "active" : ""}`}
-//           >
-//             All
-//           </button>
-//           <button
-//             onClick={() => handleCategoryChange("FOOD")}
-//             className={`category-button ${selectedCategory === "FOOD" ? "active" : ""}`}
-//           >
-//             Food
-//           </button>
-//           <button
-//             onClick={() => handleCategoryChange("DRINK")}
-//             className={`category-button ${selectedCategory === "DRINK" ? "active" : ""}`}
-//           >
-//             Drink
-//           </button>
-//           <button
-//             onClick={() => handleCategoryChange("SNACK")}
-//             className={`category-button ${selectedCategory === "SNACK" ? "active" : ""}`}
-//           >
-//             Snack
-//           </button>
-//         </div>
-//       </div>
-
-//       {menu.length === 0 ? (
-//         <AlertInfo title="Informasi">No data available</AlertInfo>
-//       ) : (
-//         <div className="flex">
-//           <div className="w-2/3 grid grid-cols-2 gap-4">
-//             {filteredMenu.map((data, index) => {
-//               const itemInCart = cart.find((item) => item.menuId === data.id) || null;
-//               return (
-//                 <CardComponent
-//                   key={`keyMenu${index}`}
-//                   data={data}
-//                   itemInCart={itemInCart}
-//                   handleAddToCart={handleAddToCart}
-//                   handleRemoveFromCart={handleRemoveFromCart}
-//                   renderCategory={renderCategory}
-//                 />
-//               );
-//             })}
-//           </div>
-
-//           {/* Transaction Section on the right */}
-//           <div className="w-1/3 ml-6">
-//             <h4 className="text-xl font-bold text-yellow-500 mb-4">
-//               Transaction
-//             </h4>
-//             <div className="bg-white p-4 shadow-md rounded-lg">
-//               <div className="flex flex-col gap-2">
-//                 {cart.map((cartItem) => (
-//                   <div key={cartItem.menuId} className="flex justify-between">
-//                     <span>{cartItem.name}</span>
-//                     <span>
-//                       {cartItem.quantity} x Rp{cartItem.price}
-//                     </span>
-//                   </div>
-//                 ))}
-//               </div>
-//               <div className="flex justify-between mt-4">
-//                 <h5 className="text-lg font-semibold">Total</h5>
-//                 <span className="text-lg font-semibold text-red-600">
-//                   Rp{total}
-//                 </span>
-//               </div>
-//               <button
-//                 className="bg-yellow-500 text-white p-2 rounded-full w-full mt-4"
-//                 onClick={handleCheckout}
-//               >
-//                 Checkout
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default MenuPage;

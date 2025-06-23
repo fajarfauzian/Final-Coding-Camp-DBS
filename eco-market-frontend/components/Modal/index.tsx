@@ -21,7 +21,7 @@ const Modal = ({
         fixed top-0 left-0 ${isShow ? "flex" : "hidden"} justify-center items-center`}
       onClick={handleClickOutside}
     >
-      <div className="w-5/6 md:w-4/6 lg:w-3/6 overflow-auto max-h-full
+      <div className="w-4/6 md:w-3/6 lg:w-2/6 overflow-auto max-h-full
         bg-white rounded-2xl shadow-xl animate-fade-in">
         {children}
       </div>

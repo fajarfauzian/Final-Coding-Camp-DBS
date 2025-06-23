@@ -29,6 +29,14 @@ export interface ICart {
   quantity: number;
   note: string;
   picture: string;
+  product?: IProduct;
+}
+
+export interface Favorite {
+  id: number;
+  idUser: number;
+  idProduct: number;
+  product: IProduct;
 }
 
 export interface OrderProductProps {

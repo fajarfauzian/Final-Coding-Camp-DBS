@@ -7,15 +7,28 @@ import { getCookies } from "@/lib/client-cookie";
 import { useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
-import { ButtonPrimary, ButtonDanger, ButtonInfo } from "@/components/Button";
+import {
+  ButtonPrimary,
+  ButtonDanger,
+  ButtonInfo,
+} from "@/components/Button";
 import { InputGroupComponent } from "@/InputComponent";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import FileInput from "@/components/FileInput";
 
+interface response {
+  status: boolean;
+  data: {
+    status: boolean;
+    message: string;
+    data: [];
+  };
+}
+
 const EditUser = ({ selectedUser }: { selectedUser: IUser }) => {
   const [isShow, setIsShow] = useState<boolean>(false);
-  const [user, setUser] = useState<IUser>({ ...selectedUser });
+  const [user, setUser] = useState<IUser>({ ...selectedUser, password: "" });
   const [showPasswordInput, setShowPasswordInput] = useState<boolean>(false);
   const router = useRouter();
   const TOKEN = getCookies("token") || "";
@@ -23,16 +36,35 @@ const EditUser = ({ selectedUser }: { selectedUser: IUser }) => {
   const formRef = useRef<HTMLFormElement>(null);
 
   const openModal = () => {
-    setUser({ ...selectedUser });
-    setUser({...user, password: ""})
-    setIsShow(true);
+    setUser({ ...selectedUser, password: "" });
+    setFile(null);
     setShowPasswordInput(false);
+    setIsShow(true);
     if (formRef.current) formRef.current.reset();
   };
 
+  const validateForm = () => {
+    if (!user.name) return "Name is required";
+    if (!user.email) return "Email is required";
+    if (showPasswordInput && !user.password) return "Password is required";
+    if (!["ADMIN", "USER"].includes(user.role)) return "Please select a valid role (Admin or User)";
+    return null;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+
+    const error = validateForm();
+    if (error) {
+      toast(error, {
+        hideProgressBar: true,
+        containerId: "toastUser",
+        type: "warning",
+      });
+      return;
+    }
+
     try {
-      e.preventDefault();
       const url = `${BASE_API_URL}/user/${selectedUser.id}`;
       const { name, email, password, role } = user;
       const payload = new FormData();
@@ -42,37 +74,37 @@ const EditUser = ({ selectedUser }: { selectedUser: IUser }) => {
         payload.append("password", password);
       }
       payload.append("role", role || "");
-      if (file !== null) payload.append("picture", file || "");
-      const { data } = await put(url, payload, TOKEN);
+      if (file) payload.append("picture", file);
+
+      const { data } = (await put(url, payload, TOKEN)) as response;
       if (data?.status) {
         setIsShow(false);
         toast(data?.message, {
           hideProgressBar: true,
-          containerId: `toastUser`,
-          type: `success`,
+          containerId: "toastUser",
+          type: "success",
         });
         setTimeout(() => router.refresh(), 1000);
       } else {
-        toast(data?.message, {
+        toast(data?.message || "Failed to update user", {
           hideProgressBar: true,
-          containerId: `toastUser`,
-          type: `warning`,
+          containerId: "toastUser",
+          type: "warning",
         });
       }
-    } catch (error) {
-      console.log(error);
-      toast(`Something Wrong`, {
+    } catch (error: any) {
+      console.error(error);
+      toast(error?.response?.data?.message || "Something went wrong", {
         hideProgressBar: true,
-        containerId: `toastUser`,
-        type: `error`,
+        containerId: "toastUser",
+        type: "error",
       });
     }
   };
 
   return (
     <div>
-      <ToastContainer containerId={`toastUser`} />
-      <ButtonInfo type="button" onClick={() => openModal()}>
+      <ButtonInfo type="button" onClick={openModal}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -88,24 +120,19 @@ const EditUser = ({ selectedUser }: { selectedUser: IUser }) => {
           />
         </svg>
       </ButtonInfo>
+
       <Modal isShow={isShow} onClose={(state) => setIsShow(state)}>
-        <form onSubmit={handleSubmit} ref={formRef}>
-          {/* modal header */}
-          <div className="sticky top-0 bg-red-telkom-hover px-5 pt-5 pb-3 shadow">
+        <form ref={formRef} onSubmit={handleSubmit}>
+          {/* Modal header */}
+          <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-800 px-5 py-3 rounded-t-2xl shadow">
             <div className="w-full flex items-center">
-              <div className="flex flex-col">
-                <strong className="font-bold text-2xl text-white">
-                  Update User
-                </strong>
-                <small className="text-white text-sm">
-                  Managers can update both Cashier and Manager roles on this
-                  page.
-                </small>
+              <div className="text-left">
+                <h3 className="font-semibold text-lg text-white">Edit User</h3>
               </div>
               <div className="ml-auto">
                 <button
                   type="button"
-                  className="text-white"
+                  className="text-white hover:text-blue-200 transition-colors"
                   onClick={() => setIsShow(false)}
                 >
                   <svg
@@ -114,7 +141,7 @@ const EditUser = ({ selectedUser }: { selectedUser: IUser }) => {
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="w-6 h-6"
+                    className="w-5 h-5"
                   >
                     <path
                       strokeLinecap="round"
@@ -126,88 +153,109 @@ const EditUser = ({ selectedUser }: { selectedUser: IUser }) => {
               </div>
             </div>
           </div>
-          {/* end modal header */}
+          {/* End modal header */}
 
-          {/* modal body */}
-          <div className="p-8">
-            <InputGroupComponent
-              id={`name`}
-              type="text"
-              value={user.name}
-              onChange={(val) => setUser({ ...user, name: val })}
-              required={true}
-              label="Nama User"
-            />
+          {/* Modal body */}
+          <div className="p-5">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <InputGroupComponent
+                  id="name"
+                  type="text"
+                  value={user.name}
+                  onChange={(val) => setUser({ ...user, name: val })}
+                  required={true}
+                  label="Full Name"
+                  placeholder="Enter name"
+                  className="text-left"
+                />
+              </div>
 
-            <InputGroupComponent
-              id={`email`}
-              type="email"
-              value={user.email}
-              onChange={(val) => setUser({ ...user, email: val })}
-              required={true}
-              label="Email User"
-            />
+              <div>
+                <InputGroupComponent
+                  id="email"
+                  type="email"
+                  value={user.email}
+                  onChange={(val) => setUser({ ...user, email: val })}
+                  required={true}
+                  label="Email"
+                  placeholder="Enter email"
+                  className="text-left"
+                />
+              </div>
 
-            <Select
-              id={`role`}
-              value={user.role}
-              label="Role User"
-              required={true}
-              onChange={(val) => setUser({ ...user, role: val })}
-            >
-              <option value="">--- Select Role ---</option>
-              <option value="ADMIN">Admin</option>
-              <option value="USER">User</option>
-            </Select>
+              <div>
+                <Select
+                  id="role"
+                  value={user.role}
+                  label="Role"
+                  required={true}
+                  onChange={(val) => setUser({ ...user, role: val })}
+                  className="text-left"
+                >
+                  <option value="" disabled>
+                    Select Role
+                  </option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="USER">User</option>
+                </Select>
+              </div>
 
-            <FileInput
-              acceptTypes={[
-                "application/pdf",
-                "image/png",
-                "image/jpeg",
-                "image/jpg",
-              ]}
-              id="profile_picture"
-              label="Unggah Foto (Max 2MB, PDF/JPG/JPEG/PNG)"
-              onChange={(f) => setFile(f)}
-              required={false}
-            />
+              <div>
+                {showPasswordInput ? (
+                  <InputGroupComponent
+                    id="password"
+                    type="password"
+                    value={user.password}
+                    onChange={(val) => setUser({ ...user, password: val })}
+                    required={true}
+                    label="Password"
+                    placeholder="Enter new password"
+                    className="text-left"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-4 bg-yellow-500 text-white px-4 py-2 rounded text-left w-full"
+                    onClick={() => setShowPasswordInput(true)}
+                  >
+                    Change Password
+                  </button>
+                )}
+              </div>
 
-            {showPasswordInput && (
-              <InputGroupComponent
-                id={`password`}
-                type="password"
-                value={user.password}
-                onChange={(val) => setUser({ ...user, password: val })}
-                required={true}
-                label="Password Default"
-              />
-            )}
-
-            {!showPasswordInput && (
-              <button
-                type="button"
-                className="mt-4 bg-yellow-500 text-white px-4 py-2 rounded"
-                onClick={() => setShowPasswordInput(true)}
-              >
-                Ubah Password Default
-              </button>
-            )}
-          </div>
-          {/* end modal body */}
-
-          {/* modal footer */}
-          <div className="w-full p-5 flex rounded-b-2xl shadow">
-            <div className="flex ml-auto gap-2">
-              <ButtonDanger type="button" onClick={() => setIsShow(false)}>
-                Cancel
-              </ButtonDanger>
-              <ButtonPrimary type="submit">Save</ButtonPrimary>
+              <div>
+                <FileInput
+                  acceptTypes={["image/png", "image/jpeg", "image/jpg"]}
+                  id="profile_picture"
+                  label="Profile Picture"
+                  onChange={(f) => setFile(f)}
+                  required={false}
+                  className="text-left"
+                />
+              </div>
             </div>
           </div>
-          {/* end modal footer */}
+          {/* End modal body */}
+
+          {/* Modal footer */}
+          <div className="bg-gray-50 p-4 flex justify-end gap-3 border-t rounded-b-2xl">
+            <ButtonDanger
+              type="button"
+              onClick={() => setIsShow(false)}
+              className="px-4 py-1.5 text-left"
+            >
+              Cancel
+            </ButtonDanger>
+            <ButtonPrimary type="submit" className="px-4 py-1.5 text-left">
+              Save
+            </ButtonPrimary>
+          </div>
+          {/* End modal footer */}
         </form>
       </Modal>
+
+      <ToastContainer containerId="toastUser" position="top-right" />
     </div>
   );
 };

@@ -27,130 +27,105 @@ const ProductPage = async ({
   searchParams: { [key: string]: string | string[] | undefined };
 }) => {
   const search = searchParams.search?.toString() || "";
-  const products: IProduct[] = await getProducts(search);
+  const products = await getProducts(search);
 
   const renderCategoryBadge = (category: string) => {
-    const baseStyles = "text-xs font-medium px-3 py-1 rounded-full";
+    const baseStyles = "text-xs font-medium px-2.5 py-0.5 rounded-full";
     let categoryStyles = "";
     let label = category;
 
     switch (category) {
       case "FOOD":
-        categoryStyles =
-          "bg-blue-100 text-blue-800 dark:bg-blue-600 dark:text-white";
+        categoryStyles = "bg-red-50 text-red-700 ring-1 ring-red-600/20";
         label = "Food";
         break;
+      case "DRINK":
+        categoryStyles = "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20";
+        label = "Drink";
+        break;
       case "ITEMS":
-        categoryStyles =
-          "bg-indigo-100 text-indigo-800 dark:bg-indigo-600 dark:text-white";
-        label = "Snack";
+        categoryStyles = "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20";
+        label = "Items";
         break;
       default:
-        categoryStyles =
-          "bg-purple-100 text-purple-800 dark:bg-purple-600 dark:text-white";
-        label = "Drink";
+        categoryStyles = "bg-gray-50 text-gray-700 ring-1 ring-gray-600/20";
+        label = "Unknown";
     }
 
     return <span className={`${baseStyles} ${categoryStyles}`}>{label}</span>;
   };
 
   return (
-
-      <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
-        <h4 className="text-2xl font-bold text-gray-800 mb-2">Product Data</h4>
-        <p className="text-sm text-gray-600 mb-6">
-          This page displays product data, allowing admins to view details,
-          search, and manage products by adding, editing, or deleting them.
+    <div className="bg-gray-50 p-4 md:p-6 lg:p-4">
+      <div className="border-b pb-4 mb-4">
+        <h4 className="text-xl font-semibold text-gray-900">Product Data</h4>
+        <p className="text-sm text-gray-500 mt-1">
+          Manage and monitor your product inventory
         </p>
+      </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-          {/* Search Bar */}
-          <div className="w-full sm:w-auto flex-grow max-w-md">
-            <Search url="/admin/product" search={search} />
-          </div>
-          {/* Add Product Button */}
-          <AddProduct />
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-5 gap-3">
+        <div className="w-full sm:w-auto flex-grow max-w-md">
+          <Search url="/admin/product" search={search} />
         </div>
+        <AddProduct />
+      </div>
 
-        {products.length === 0 ? (
-          <AlertInfo title="Information">No products available</AlertInfo>
-        ) : (
-          <div className="grid gap-4">
-            {products.map((product, index) => (
-              <div
-                key={`product-${index}`}
-                className="flex flex-col sm:flex-row items-center bg-gray-50 rounded-lg shadow-sm p-4 gap-4"
-              >
-                {/* Product Picture */}
-                <div className="w-full sm:w-1/12 text-center">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Picture
-                  </span>
+      {products.length === 0 ? (
+        <AlertInfo title="Information">No products available</AlertInfo>
+      ) : (
+        <div className="space-y-3">
+          {products.map((product, index) => (
+            <div
+              key={`product-${index}`}
+              className="flex flex-col sm:flex-row items-center bg-white border rounded-lg p-3 gap-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="w-full sm:w-1/12 text-center">
+                {product.picture ? (
                   <Image
-                    width={50}
-                    height={50}
+                    width={40}
+                    height={40}
                     src={`${BASE_IMAGE_PRODUCT}/${product.picture}`}
-                    className="rounded-md mx-auto mt-2"
+                    className="rounded-md mx-auto object-cover"
                     alt={`${product.name} product image`}
                     unoptimized
                   />
-                </div>
-
-                {/* Product Name */}
-                <div className="w-full sm:w-2/12">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Name
-                  </span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
-                    {product.name}
-                  </p>
-                </div>
-
-                {/* Product Price */}
-                <div className="w-full sm:w-1/12">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Price
-                  </span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
-                    ${product.price.toFixed(2)}
-                  </p>
-                </div>
-
-                {/* Product Description */}
-                <div className="w-full sm:w-5/12">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Description
-                  </span>
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                    {product.description}
-                  </p>
-                </div>
-
-                {/* Product Category */}
-                <div className="w-full sm:w-1/12">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Category
-                  </span>
-                  <div className="mt-1">
-                    {renderCategoryBadge(product.category)}
+                ) : (
+                  <div className="w-[40px] h-[40px] bg-gray-100 rounded-md mx-auto flex items-center justify-center">
+                    <span className="text-gray-400 text-xs">No Image</span>
                   </div>
-                </div>
-
-                {/* Actions */}
-                <div className="w-full sm:w-2/12 text-center">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Actions
-                  </span>
-                  <div className="flex justify-center gap-2 mt-2">
-                    <EditProduct selectedProduct={product} />
-                    <DeleteProduct selectedProduct={product} />
-                  </div>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              <div className="w-full sm:w-2/12">
+                <p className="text-sm font-medium text-gray-900">{product.name}</p>
+              </div>
+
+              <div className="w-full sm:w-2/12">
+                <p className="text-sm text-gray-700">
+                  Rp {Math.round(product.price).toLocaleString('id-ID')}
+                </p>
+              </div>
+
+              <div className="w-full sm:w-3/12">
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  {product.description}
+                </p>
+              </div>
+
+              <div className="w-full sm:w-2/12">
+                {renderCategoryBadge(product.category)}
+              </div>
+
+              <div className="w-full sm:w-2/12 flex justify-center gap-2">
+                <EditProduct selectedProduct={product} />
+                <DeleteProduct selectedProduct={product} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 

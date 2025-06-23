@@ -1,134 +1,196 @@
 "use client";
-import { useEffect, useRef } from "react";
-import Chart from "chart.js/auto";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import { getCookies } from "@/lib/client-cookie";
+import { BASE_API_URL } from "@/global";
+import { get } from "@/lib/api-bridge";
+import { FaCalendarAlt, FaClock, FaShoppingBag } from "react-icons/fa";
 
-const TransaksiPage = () => {
-  const chartRef = useRef<Chart | null>(null);
+interface Order {
+  id: number;
+  customer: string;
+  idUser: number;
+  createdAt: string;
+  total_price: number; // Changed from total to total_price to match BE
+  payment_method: string;
+  status: string;
+}
 
-  useEffect(() => {
-    const canvas = document.getElementById("myChart") as HTMLCanvasElement;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        if (chartRef.current) {
-          chartRef.current.destroy();
-        }
-        chartRef.current = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: [
-              "January",
-              "February",
-              "March",
-              "April",
-              "May",
-              "June",
-              "July",
-            ],
-            datasets: [
-              {
-                label: "Monthly Sales",
-                data: [1, 2, 3, 4, 5, 6, 7],
-                backgroundColor: "rgba(75, 192, 192, 0.2)",
-                borderColor: "rgba(75, 192, 192, 1)",
-                borderWidth: 1,
-              },
-            ],
-          },
-          options: {
-            animation: {
-              duration: 2000,
-              easing: "easeInOutBounce",
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: "Sales",
-                },
-              },
-              x: {
-                title: {
-                  display: true,
-                  text: "Month",
-                },
-              },
-            },
-          },
-        });
-      }
+interface User {
+  id: number; // Changed from idUser to id to match BE
+}
+
+const fetchUser = async (): Promise<User | null> => {
+  try {
+    const token = getCookies("token") ?? "";
+    if (!token) return null;
+    const response = await get(`${BASE_API_URL}/user/profile`, token); // Updated endpoint
+    return response?.status && response?.data ? response.data : null;
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null;
+  }
+};
+
+const fetchOrders = async (userId: number): Promise<Order[]> => {
+  try {
+    const token = getCookies("token") ?? "";
+    if (!token) return [];
+    const response = await get(`${BASE_API_URL}/order`, token);
+
+    if (!response?.status || !response?.data) {
+      return [];
     }
 
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy();
+    // Directly access data array from response
+    const orders = response.data.data || [];
+    return orders.filter((order: Order) => order.idUser === userId);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return [];
+  }
+};
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(date);
+};
+
+const formatTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(date);
+};
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(amount);
+};
+
+const TransactionPage = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const user = await fetchUser();
+        if (!user) {
+          Swal.fire({
+            icon: "error",
+            title: "Authentication Error",
+            text: "Please log in to view transactions.",
+            confirmButtonColor: "#10B981",
+          });
+          return;
+        }
+
+        const orderData = await fetchOrders(user.id);
+        setOrders(orderData);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to load transaction history.",
+          confirmButtonColor: "#10B981",
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
+
+    loadData();
   }, []);
 
   return (
-    <div className="m-2 bg-white rounded-lg p-6 border-t-primary shadow-md">
-      <div className="rounded-lg bg-white p-6">
-        {/* Header */}
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          Transaction Dashboard
-        </h2>
-
-        {/* Monthly Sales Section */}
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">
-            Monthly Sales Overview
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Here is the monthly sales data.
-          </p>
-          <div className="space-y-2">
-            <p className="text-gray-700">
-              <span className="font-medium">Total Sales:</span> $0
-            </p>
-            <p className="text-gray-700">
-              <span className="font-medium">Average Sales per Month:</span> $0
-            </p>
-            <p className="text-gray-700">
-              <span className="font-medium">Sales Trend:</span> Growth
-            </p>
-          </div>
-          <Link
-            href="/admin/user"
-            className="mt-4 inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors duration-200 shadow-md"
-          >
-            View Users
-          </Link>
-        </div>
-
-        {/* Chart Section */}
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">
-            Sales Chart
-          </h3>
-          <div className="w-full">
-            <canvas id="myChart" className="max-h-96"></canvas>
-          </div>
-        </div>
-
-        {/* Shop Section */}
-        <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Shop</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Visit our store to explore and purchase our products.
-          </p>
-          <Link
-            href="/admin/product"
-            className="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors duration-200 shadow-md"
-          >
-            Go to Products
-          </Link>
-        </div>
+    <div className="bg-gray-50 p-4 md:p-6 lg:p-4">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          Transaction History
+        </h1>
+        <p className="text-gray-600 mt-2">View your past orders and transaction details</p>
       </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-xl">
+          <FaShoppingBag className="mx-auto text-gray-400 text-4xl mb-4" />
+          <p className="text-gray-600">No transaction history found</p>
+          <p className="text-gray-400 text-sm mt-2">Start shopping to see your orders here</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {orders.map((order) => (
+            <div
+              key={order.id}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Order #{order.id}
+                    </h3>
+                    <p className="text-emerald-600 font-medium mt-1">
+                      {order.customer}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                      order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center text-gray-600">
+                    <FaCalendarAlt className="mr-2" />
+                    {formatDate(order.createdAt)}
+                  </div>
+                  <div className="flex items-center text-gray-600">
+                    <FaClock className="mr-2" />
+                    {formatTime(order.createdAt)}
+                  </div>
+                  <div className="text-right md:text-left">
+                    <span className="text-gray-600">Payment Method: </span>
+                    <span className="font-medium text-gray-900">{order.payment_method}</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Total Amount</span>
+                    <span className="text-lg font-semibold text-emerald-600">
+                      {formatCurrency(order.total_price)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-export default TransaksiPage;
+export default TransactionPage;
