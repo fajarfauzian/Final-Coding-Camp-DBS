@@ -90,14 +90,14 @@ npm run dev
 
 Akses dashboard di: http://localhost:3000
 
-👥 Tim Proyek
-Fajar Fauzian – Fullstack Developer
-Muhammad Yazid Wiliadi - Frontend Developer
-Albi Ariza Syafiq - Fullstack Developer
-Dinda Mei Sabela - Frontend Developer
-Muhammad Zakki Mubarroq - Machine Learning Engineer
-Hirzi Dian Alfianzah - Machine Learning Engineer
+## 👥 Tim Proyek
+- Fajar Fauzian – Fullstack Developer
+- Muhammad Yazid Wiliadi - Frontend Developer
+- Albi Ariza Syafiq - Fullstack Developer
+- Dinda Mei Sabela - Frontend Developer
+- Muhammad Zakki Mubarroq - Machine Learning Engineer
+- Hirzi Dian Alfianzah - Machine Learning Engineer
 
-🌱 Kontribusi terhadap Green Economy
+## 🌱 Kontribusi terhadap Green Economy
 Aplikasi ini dikembangkan sebagai bagian dari inisiatif untuk mendukung ekosistem digital berkelanjutan, dengan memberikan alat bantu bagi pengelola pasar produk ramah lingkungan.
 
